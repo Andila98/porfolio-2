@@ -1,0 +1,4 @@
+[
+    {"id": "current-role", "kind": "work", "role": "Software Engineer", "org": "TODO: employer", "start": "", "end": "", "summary": "Building multi-tenant financial software.", "hidden": false},
+    {"id": "education", "kind": "education", "role": "TODO: degree / qualification", "org": "TODO: institution", "start": "", "end": "", "summary": "", "hidden": false}
+]

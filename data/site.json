@@ -1,0 +1,22 @@
+{
+    "name": "Andila",
+    "title": "Backend & Distributed Systems Engineer",
+    "tagline": "I design multi-tenant backends, financial ledgers and payment integrations that stay correct under load.",
+    "location": "Nairobi, Kenya",
+    "availability": "Open to backend and full-stack roles",
+    "version": "2.4.0",
+    "status": "Online",
+    "philosophy": [
+        "Clean, boring code that the next engineer can read in minutes",
+        "Multi-tenant isolation designed in, not bolted on",
+        "Money is append-only: ledgers, idempotency and audit trails",
+        "High throughput through good schemas before clever caching"
+    ],
+    "bio": "TODO: two or three sentences about who you are, what you build and how you work.",
+    "years_coding": "TODO",
+    "email": "you@example.com",
+    "whatsapp": "",
+    "github": "https://github.com/Andila98",
+    "linkedin": "",
+    "meta_description": "Andila, a backend and distributed systems engineer in Nairobi building multi-tenant SaaS platforms, financial ledgers and M-Pesa integrations."
+}
