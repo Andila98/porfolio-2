@@ -1,0 +1,13 @@
+# Used only when the whole repository sits inside XAMPP's htdocs.
+# Everything is routed into public/, so .env, src/, data/ and storage/
+# can never be requested directly.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>
