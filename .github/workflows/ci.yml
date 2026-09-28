@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: portfolio_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql, curl, mbstring, fileinfo
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Lint PHP
+        run: find src public bin templates tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Check JavaScript syntax
+        run: for f in public/assets/js/*.js; do node --check "$f"; done
+
+      - name: Validate content JSON
+        run: |
+          for f in data/*.json; do
+            php -r "json_decode(file_get_contents('$f'), flags: JSON_THROW_ON_ERROR);" || exit 1
+          done
+
+      - name: Run tests
+        env:
+          DB_TEST_HOST: 127.0.0.1
+          DB_TEST_PORT: "3306"
+          DB_TEST_NAME: portfolio_test
+          DB_TEST_USER: root
+          DB_TEST_PASS: root
+        run: vendor/bin/phpunit
