@@ -87,6 +87,10 @@ final class View
         if ($date === null || $date === '') {
             return '';
         }
+        // A bare year ("2024") would otherwise parse as a time of day (20:24 today).
+        if (preg_match('/^\d{4}$/', $date) === 1) {
+            return $date;
+        }
         $time = strtotime($date);
         return $time === false ? $date : date($format, $time);
     }

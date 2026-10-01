@@ -4,7 +4,7 @@ $compact = $compact ?? false;
 ?>
 <ul class="links">
     <?php if ($compact): ?>
-        <li><a class="link" href="<?= $view->url('projects/' . $project['slug']) ?>">Release notes &rarr;</a></li>
+        <li><a class="link" href="<?= $view->url('projects/' . $project['slug']) ?>">Release notes</a></li>
     <?php endif; ?>
     <?php if (!empty($project['private_repo'])): ?>
         <li><a class="link link--private" href="<?= $view->url('/?project=' . rawurlencode($project['slug']) . '#contact') ?>">

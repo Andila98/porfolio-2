@@ -23,22 +23,56 @@ $showcase = array_values(array_filter($projects, static fn (array $p): bool => e
 $workProjects = array_values(array_filter($projects, static fn (array $p): bool => !empty($p['work_project'])));
 $view->share('scripts', ['terminal.js', 'tea.js']);
 ?>
-<section class="hero" aria-labelledby="hero-title">
-    <p class="hero__prompt mono"><span class="prompt">$</span> whoami</p>
-    <h1 class="hero__title" id="hero-title"><?= $view->e($site['name'] ?? '') ?></h1>
-    <p class="hero__role"><?= $view->e($site['title'] ?? '') ?></p>
-    <?php if (!empty($site['tagline'])): ?><p class="hero__tagline"><?= $view->e($site['tagline']) ?></p><?php endif; ?>
-    <p class="hero__meta mono">
-        <?php if (!empty($site['location'])): ?><span>region: <?= $view->e($site['location']) ?></span><?php endif; ?>
-        <?php if (!empty($site['availability'])): ?><span>status: <?= $view->e($site['availability']) ?></span><?php endif; ?>
-    </p>
-    <div class="hero__cta">
-        <a class="btn btn--primary" href="<?= $view->url('projects') ?>">View deployments</a>
-        <?php if ($primaryCv !== null && $primaryCv['available']): ?>
-            <a class="btn" href="<?= $view->url('cv/' . $primaryCv['key']) ?>"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download CV</a>
-        <?php else: ?>
-            <a class="btn" href="#artifacts">CV versions</a>
-        <?php endif; ?>
+<?php
+$real = static fn (mixed $v): bool => is_string($v) && trim($v) !== '' && !str_starts_with($v, 'TODO');
+$currentRole = null;
+foreach ($experience as $item) {
+    if (($item['kind'] ?? '') === 'work' && empty($item['end'])) {
+        $currentRole = $item;
+        break;
+    }
+}
+$stackLine = [];
+foreach ($primarySkills as $group) {
+    foreach ($group['items'] as $item) {
+        $stackLine[] = preg_replace('/\s*\/.*$/', '', (string) $item);
+    }
+}
+$stackLine = array_slice(array_values(array_unique($stackLine)), 0, 4);
+$when = static function (array $item) use ($view): string {
+    $start = $view->date($item['start'] ?? '');
+    $end = !empty($item['end']) ? $view->date($item['end']) : '';
+    if ($start !== '') {
+        return $start . ' – ' . ($end !== '' ? $end : 'present');
+    }
+    return $end;
+};
+?>
+<section class="node node--hero" id="top" aria-labelledby="hero-title">
+    <?= $view->partial('partials/node-head', ['num' => '00', 'title' => 'Ingress', 'id' => 'hero-head', 'meta' => 'port 443', 'tag' => 'span']) ?>
+    <div class="hero">
+        <div class="hero__copy">
+            <p class="hero__prompt mono"><span class="prompt">$</span> whoami</p>
+            <h1 class="hero__title" id="hero-title"><?= $view->e($site['name'] ?? '') ?></h1>
+            <p class="hero__role"><?= $view->e($site['title'] ?? '') ?></p>
+            <?php if ($real($site['tagline'] ?? null)): ?><p class="hero__tagline"><?= $view->e($site['tagline']) ?></p><?php endif; ?>
+            <dl class="spec">
+                <?php if ($real($site['location'] ?? null)): ?><div><dt>Location</dt><dd><?= $view->e($site['location']) ?></dd></div><?php endif; ?>
+                <?php if ($currentRole !== null): ?><div><dt>Current role</dt><dd><?= $view->e($currentRole['role']) ?><?= $real($currentRole['org'] ?? null) ? ', ' . $view->e($currentRole['org']) : '' ?></dd></div><?php endif; ?>
+                <?php if ($real($site['availability'] ?? null)): ?><div><dt>Status</dt><dd class="spec__ok"><?= $view->e($site['availability']) ?></dd></div><?php endif; ?>
+                <?php if ($stackLine): ?><div><dt>Core stack</dt><dd><?= $view->e(implode(', ', $stackLine)) ?></dd></div><?php endif; ?>
+            </dl>
+            <div class="hero__cta">
+                <a class="btn btn--primary" href="<?= $view->url('projects') ?>">View projects</a>
+                <?php if ($primaryCv !== null && $primaryCv['available']): ?>
+                    <a class="btn" href="<?= $view->url('cv/' . $primaryCv['key']) ?>"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download CV</a>
+                <?php else: ?>
+                    <a class="btn" href="#artifacts">CV versions</a>
+                <?php endif; ?>
+                <a class="btn btn--ghost" href="#console"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg>Open console</a>
+            </div>
+        </div>
+        <?= $view->partial('partials/pipeline') ?>
     </div>
 </section>
 
@@ -46,44 +80,55 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
 
 <section class="node node--wide" id="core" aria-labelledby="core-title">
     <?= $view->partial('partials/node-head', ['num' => '01', 'title' => 'Core Services', 'id' => 'core', 'meta' => 'service.yml']) ?>
-    <div class="node__body config">
-        <dl class="config__block">
-            <dt>service</dt><dd><?= $view->e(strtolower((string) ($site['name'] ?? ''))) ?>-engineering</dd>
-            <dt>role</dt><dd><?= $view->e($site['title'] ?? '') ?></dd>
-            <?php if (!empty($site['bio'])): ?><dt>about</dt><dd><?= $view->e($site['bio']) ?></dd><?php endif; ?>
-            <?php if (!empty($site['philosophy'])): ?>
-                <dt>principles</dt>
-                <dd><ul class="config__list"><?php foreach ($site['philosophy'] as $line): ?><li><?= $view->e($line) ?></li><?php endforeach; ?></ul></dd>
+    <div class="node__body core">
+        <div class="core__main">
+            <div class="config">
+                <p class="config__file mono">/etc/andila/service.yml</p>
+                <dl class="config__block">
+                    <dt>service</dt><dd class="mono"><?= $view->e(strtolower((string) ($site['name'] ?? ''))) ?>-engineering</dd>
+                    <dt>role</dt><dd><?= $view->e($site['title'] ?? '') ?></dd>
+                    <?php if ($real($site['bio'] ?? null)): ?><dt>about</dt><dd><?= $view->e($site['bio']) ?></dd><?php endif; ?>
+                    <?php if (!empty($site['philosophy'])): ?>
+                        <dt>principles</dt>
+                        <dd><ol class="config__list"><?php foreach ($site['philosophy'] as $line): ?><li><?= $view->e($line) ?></li><?php endforeach; ?></ol></dd>
+                    <?php endif; ?>
+                </dl>
+            </div>
+            <?php if ($primarySkills): ?>
+                <h3 class="subhead">Primary stack</h3>
+                <ul class="badges badges--lg" aria-label="Primary stack">
+                    <?php foreach ($primarySkills as $group): ?>
+                        <?php foreach ($group['items'] as $item): ?><li class="badge badge--accent"><?= $view->e($item) ?></li><?php endforeach; ?>
+                    <?php endforeach; ?>
+                </ul>
             <?php endif; ?>
-        </dl>
-        <?php if ($primarySkills): ?>
-            <ul class="badges badges--lg" aria-label="Primary stack">
-                <?php foreach ($primarySkills as $group): ?>
-                    <?php foreach ($group['items'] as $item): ?><li class="badge badge--accent"><?= $view->e($item) ?></li><?php endforeach; ?>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-        <?php $secondary = array_filter($skills, static fn (array $s): bool => empty($s['primary'])); ?>
-        <?php if ($secondary): ?><h3 class="subhead mono">also runs on</h3><?php endif; ?>
-        <div class="skills">
-            <?php foreach ($secondary as $group): ?>
-                <div class="skills__group">
-                    <h3 class="skills__label mono"><?= $view->e($group['label']) ?></h3>
-                    <ul class="badges"><?php foreach ($group['items'] as $item): ?><li class="badge"><?= $view->e($item) ?></li><?php endforeach; ?></ul>
+            <?php $secondary = array_filter($skills, static fn (array $s): bool => empty($s['primary'])); ?>
+            <?php if ($secondary): ?>
+                <h3 class="subhead">Also works with</h3>
+                <div class="skills">
+                    <?php foreach ($secondary as $group): ?>
+                        <div class="skills__group">
+                            <h4 class="skills__label"><?= $view->e($group['label']) ?></h4>
+                            <p class="skills__items"><?= $view->e(implode(', ', $group['items'])) ?></p>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </div>
         <?php if ($experience): ?>
-            <h3 class="subhead mono">runtime history</h3>
-            <ol class="timeline">
-                <?php foreach ($experience as $item): ?>
-                    <li class="timeline__item">
-                        <span class="timeline__when mono"><?= $view->e($view->date($item['start'] ?? '') ?: '') ?><?= !empty($item['start']) ? ' – ' . $view->e($item['end'] ? $view->date($item['end']) : 'present') : '' ?></span>
-                        <strong><?= $view->e($item['role']) ?></strong><?php if (!empty($item['org'])): ?> · <?= $view->e($item['org']) ?><?php endif; ?>
-                        <?php if (!empty($item['summary'])): ?><p><?= $view->e($item['summary']) ?></p><?php endif; ?>
-                    </li>
-                <?php endforeach; ?>
-            </ol>
+            <aside class="core__history" aria-labelledby="history-title">
+                <h3 class="subhead" id="history-title">Runtime history</h3>
+                <ol class="timeline">
+                    <?php foreach ($experience as $item): ?>
+                        <li class="timeline__item<?= empty($item['end']) && ($item['kind'] ?? '') === 'work' ? ' is-current' : '' ?>">
+                            <?php if ($when($item) !== ''): ?><span class="timeline__when mono"><?= $view->e($when($item)) ?></span><?php endif; ?>
+                            <strong class="timeline__role"><?= $view->e($real($item['role'] ?? null) ? $item['role'] : '') ?></strong>
+                            <?php if ($real($item['org'] ?? null)): ?><span class="timeline__org"><?= $view->e($item['org']) ?></span><?php endif; ?>
+                            <?php if ($real($item['summary'] ?? null)): ?><p><?= $view->e($item['summary']) ?></p><?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </aside>
         <?php endif; ?>
     </div>
 </section>
@@ -99,7 +144,7 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
                 <?= $view->partial('partials/release', ['project' => $project]) ?>
             <?php endforeach; ?>
         </div>
-        <p><a class="link" href="<?= $view->url('projects') ?>">All releases, filterable by stack &rarr;</a></p>
+        <p class="node__foot"><a class="link" href="<?= $view->url('projects') ?>">All projects, filterable by stack</a></p>
     </div>
 </section>
 
@@ -116,6 +161,7 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
                 <input id="terminal-input" name="cmd" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type a command">
             </form>
             <nav class="terminal__chips" aria-label="Quick commands">
+                <span class="terminal__chips-label">Try</span>
                 <a class="chip" href="#console" data-cmd="help">help</a>
                 <a class="chip" href="#core" data-cmd="skills">skills</a>
                 <a class="chip" href="#deployments" data-cmd="git log --oneline">git log</a>
@@ -144,7 +190,7 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
                 <?php endforeach; ?>
             </ol>
         <?php else: ?>
-            <p class="muted">No milestones logged yet.</p>
+            <p class="empty">No milestones published yet. Certifications, awards and launches appear here as they land.</p>
         <?php endif; ?>
     </div>
 </section>
@@ -169,9 +215,9 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
 </section>
 
 <section class="node" id="sponsor" aria-labelledby="sponsor-title">
-    <?= $view->partial('partials/node-head', ['num' => '06', 'title' => 'Sponsor Endpoint', 'id' => 'sponsor', 'meta' => 'buy me a tea']) ?>
+    <?= $view->partial('partials/node-head', ['num' => '06', 'title' => 'Sponsor Endpoint', 'id' => 'sponsor', 'meta' => 'POST /api/tips']) ?>
     <div class="node__body">
-        <p>Enjoyed something here? Buy me a cup of tea via M-Pesa.</p>
+        <p class="node__intro">Enjoyed something here? Buy me a cup of tea through M-Pesa.</p>
         <?= $view->partial('partials/tea-form', ['presets' => $presets]) ?>
     </div>
 </section>
@@ -180,7 +226,7 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
     <?= $view->partial('partials/node-head', ['num' => '07', 'title' => 'Contact Gateway', 'id' => 'contact', 'meta' => 'POST /contact']) ?>
     <div class="node__body">
         <?php if ($contactSent): ?>
-            <p class="notice notice--ok" role="status">200 OK: message received. I'll reply within 24 hours.</p>
+            <p class="notice notice--ok" role="status"><span class="mono">200 OK</span> Message received. I'll reply within 24 hours.</p>
         <?php endif; ?>
         <?php if (!empty($contactErrors['form'])): ?><p class="notice notice--err" role="alert"><?= $view->e($contactErrors['form']) ?></p><?php endif; ?>
         <form class="form" method="post" action="<?= $view->url('contact') ?>" novalidate>
@@ -203,7 +249,7 @@ $view->share('scripts', ['terminal.js', 'tea.js']);
                 <textarea name="message" rows="5" required<?= isset($contactErrors['message']) ? ' aria-invalid="true" aria-describedby="err-message"' : '' ?>><?= $view->e($contactOld['message'] ?? '') ?></textarea>
                 <?php if (isset($contactErrors['message'])): ?><span class="field__error" id="err-message"><?= $view->e($contactErrors['message']) ?></span><?php endif; ?>
             </label>
-            <button class="btn btn--primary" type="submit">Send request</button>
+            <button class="btn btn--primary" type="submit">Send message</button>
         </form>
         <ul class="direct">
             <?php if (!empty($site['email'])): ?><li><a class="link" href="mailto:<?= $view->e($site['email']) ?>"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg><?= $view->e($site['email']) ?></a></li><?php endif; ?>

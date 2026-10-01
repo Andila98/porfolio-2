@@ -4,7 +4,6 @@ $old = $old ?? [];
 ?>
 <form class="tea" method="post" action="<?= $view->url('support') ?>" data-tea-form novalidate>
     <?= $view->csrfField() ?>
-    <div class="tea__request mono" aria-hidden="true">POST /api/tips</div>
     <fieldset class="tea__amounts">
         <legend>Amount (KES)</legend>
         <?php foreach ($presets as $i => $preset): ?>

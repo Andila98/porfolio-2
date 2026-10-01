@@ -32,6 +32,7 @@ $scripts = $scripts ?? [];
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
+    <link rel="preload" href="<?= $view->url('assets/fonts/plex-sans-400.woff2') ?>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<?= $view->asset('css/main.css') ?>">
     <script type="module" src="<?= $view->asset('js/theme.js') ?>"></script>
     <?php foreach ($scripts as $script): ?>
@@ -49,5 +50,6 @@ $scripts = $scripts ?? [];
         <?= $content ?>
     </main>
     <?= $view->partial('partials/footer') ?>
+    <?= $view->partial('partials/tabbar') ?>
 </body>
 </html>

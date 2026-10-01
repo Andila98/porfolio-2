@@ -1,4 +1,4 @@
 [
-    {"id": "current-role", "kind": "work", "role": "Software Engineer", "org": "TODO: employer", "start": "", "end": "", "summary": "Building multi-tenant financial software.", "hidden": false},
-    {"id": "education", "kind": "education", "role": "TODO: degree / qualification", "org": "TODO: institution", "start": "", "end": "", "summary": "", "hidden": false}
+    {"id": "current-role", "kind": "work", "role": "Software Engineer", "org": "ULG Kenya", "start": "2026-02", "end": "", "summary": "Building multi-tenant financial software.", "hidden": false},
+    {"id": "education", "kind": "education", "role": "Diploma in Business Information Technology", "org": "Strathmore University", "start": "", "end": "2024", "summary": "", "hidden": false}
 ]
