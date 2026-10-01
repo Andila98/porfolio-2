@@ -12,7 +12,7 @@
         </div>
     </section>
     <section class="node">
-        <header class="node__head"><span class="node__id">LEDGER</span><h2 class="node__title">Tips received</h2></header>
+        <header class="node__head"><span class="node__id">LEDGER</span><h2 class="node__title">Tips received</h2><span class="node__meta">production only</span></header>
         <div class="node__body">
             <?php if ($stats['totals']): ?>
                 <table class="table"><thead><tr><th>Month</th><th>Tips</th><th>KES</th></tr></thead><tbody>

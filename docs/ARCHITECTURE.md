@@ -21,7 +21,7 @@ are created lazily, so pages that never touch MySQL never open a connection.
 
 | Kind | Where | Why |
 | --- | --- | --- |
-| Site settings, projects, skills, experience, achievements, CV list | `data/*.json` | Versioned in git, readable, edited through `/admin` with history + restore |
+| Site settings, projects, skills, experience, achievements, CV list | `storage/content/*.json` (seeded once from `data/`) | Readable files edited through `/admin` with history + restore; kept out of git so deploys never reset them |
 | Tips, messages, CV download counts, rate limits | MySQL | Transactional, append-only guarantees, and many small writes |
 
 `CollectionSchema` defines every JSON collection's fields once. The admin

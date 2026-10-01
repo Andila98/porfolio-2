@@ -5,13 +5,14 @@
 </div>
 <div class="table-wrap">
 <table class="table">
-    <thead><tr><th>#</th><th>Time</th><th>Event</th><th>Source</th><th>KES</th><th>Checkout</th><th>Receipt</th><th>Result</th></tr></thead>
+    <thead><tr><th>#</th><th>Time</th><th>Event</th><th>Env</th><th>Source</th><th>KES</th><th>Checkout</th><th>Receipt</th><th>Result</th></tr></thead>
     <tbody>
     <?php foreach ($events as $event): ?>
         <tr>
             <td class="mono"><?= (int) $event['id'] ?></td>
             <td class="mono nowrap"><?= $view->e($event['created_at']) ?></td>
             <td><span class="tag tag--<?= $view->e(strtolower((string) $event['event'])) ?>"><?= $view->e($event['event']) ?></span></td>
+            <td class="mono"><?= $view->e($event['environment']) ?></td>
             <td class="mono"><?= $view->e($event['source']) ?></td>
             <td><?= (int) $event['amount'] ?></td>
             <td class="mono"><?= $view->e($event['checkout_request_id'] ?? '') ?></td>

@@ -4,14 +4,12 @@
 /storage/logs/*
 /storage/cv/*
 !/storage/**/.gitkeep
-/data/history/*
-!/data/history/.gitkeep
+/storage/content/*
+!/storage/content/.gitkeep
 /public/assets/img/projects/**/*
 !/public/assets/img/projects/.gitkeep
 .phpunit.result.cache
 /.phpunit.cache/
 node_modules/
 .DS_Store
-/data/*.lock
-/data/*.tmp-*
 /backups/

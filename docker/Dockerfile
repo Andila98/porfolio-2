@@ -21,7 +21,7 @@ WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
 
-RUN mkdir -p storage/cache storage/logs storage/cv data/history public/assets/img/projects \
-    && chown -R www-data:www-data storage data public/assets/img/projects
+RUN mkdir -p storage/cache storage/logs storage/cv storage/content public/assets/img/projects \
+    && chown -R www-data:www-data storage public/assets/img/projects
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localhost/healthz || exit 1

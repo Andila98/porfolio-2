@@ -286,7 +286,7 @@ final class AdminController extends Controller
     private function ledgerCsv(Ledger $ledger): Response
     {
         $out = fopen('php://temp', 'r+');
-        $columns = ['id', 'created_at', 'tip_id', 'event', 'amount', 'phone_last3', 'mpesa_receipt', 'checkout_request_id', 'result_code', 'result_desc', 'source'];
+        $columns = ['id', 'created_at', 'tip_id', 'event', 'amount', 'phone_last3', 'mpesa_receipt', 'checkout_request_id', 'result_code', 'result_desc', 'source', 'environment'];
         fputcsv($out, $columns, escape: '');
         foreach ($ledger->allEvents() as $row) {
             fputcsv($out, array_map(static fn (string $c): string => (string) $row[$c], $columns), escape: '');

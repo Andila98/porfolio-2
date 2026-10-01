@@ -85,8 +85,8 @@ final class SupportController extends Controller
             $this->app->log('warning', 'M-Pesa callback with a bad token from ' . $request->ip());
             return Response::json(['ResultCode' => 1, 'ResultDesc' => 'Rejected'], 403);
         }
-        $handled = $this->app->tips()->handleCallback($request->json());
-        if (!$handled) {
+        $outcome = $this->app->tips()->handleCallback($request->json());
+        if ($outcome === 'unknown') {
             $this->app->log('warning', 'M-Pesa callback for an unknown checkout: ' . mb_substr($request->rawBody(), 0, 500));
         }
         return Response::json(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);

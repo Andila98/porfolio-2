@@ -9,7 +9,7 @@ tests
 storage/cache/*
 storage/logs/*
 storage/cv/*
-data/history/*
+storage/content/*
 *.lock
 !composer.lock
 .phpunit.cache

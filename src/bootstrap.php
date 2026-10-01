@@ -23,6 +23,7 @@ if (is_file($root . '/vendor/autoload.php')) {
 }
 
 Env::load($root . '/.env');
+Env::assertProductionConfig();
 
 date_default_timezone_set('Africa/Nairobi');
 error_reporting(E_ALL);

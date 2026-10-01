@@ -85,15 +85,60 @@ final class Request
             || str_contains((string) ($this->server['CONTENT_TYPE'] ?? ''), 'application/json');
     }
 
-    public function ip(): string
+    /**
+     * The client IP used for rate limits and logs. X-Forwarded-For is only
+     * believed when the direct peer is a trusted proxy (TRUSTED_PROXIES:
+     * comma-separated IPs or CIDRs), and then the right-most hop that is not
+     * itself a trusted proxy wins, since anything left of it is client-supplied.
+     */
+    public function ip(?string $trustedProxies = null): string
     {
-        // Behind Traefik the client IP arrives in X-Forwarded-For; the container is
-        // not publicly reachable, so the first hop is trustworthy there.
-        $forwarded = $this->header('X-Forwarded-For');
-        if ($forwarded !== '' && Env::get('APP_ENV') === 'production') {
-            return trim(explode(',', $forwarded)[0]);
+        $remote = (string) ($this->server['REMOTE_ADDR'] ?? '0.0.0.0');
+        $trusted = array_values(array_filter(array_map('trim', explode(',', $trustedProxies ?? (string) Env::get('TRUSTED_PROXIES', '')))));
+        if ($trusted === [] || !self::ipInRanges($remote, $trusted)) {
+            return $remote;
         }
-        return (string) ($this->server['REMOTE_ADDR'] ?? '0.0.0.0');
+        $hops = array_reverse(array_filter(array_map('trim', explode(',', $this->header('X-Forwarded-For')))));
+        foreach ($hops as $hop) {
+            if (filter_var($hop, FILTER_VALIDATE_IP) === false) {
+                break; // garbage in the chain: stop at the last good hop
+            }
+            if (!self::ipInRanges($hop, $trusted)) {
+                return $hop;
+            }
+            $remote = $hop;
+        }
+        return $remote;
+    }
+
+    /** @param list<string> $ranges IPs or CIDRs, IPv4 or IPv6 */
+    public static function ipInRanges(string $ip, array $ranges): bool
+    {
+        $packed = @inet_pton($ip);
+        if ($packed === false) {
+            return false;
+        }
+        foreach ($ranges as $range) {
+            [$subnet, $bits] = str_contains($range, '/') ? explode('/', $range, 2) : [$range, null];
+            $net = @inet_pton($subnet);
+            if ($net === false || strlen($net) !== strlen($packed)) {
+                continue;
+            }
+            $bits = $bits === null ? strlen($net) * 8 : (int) $bits;
+            $bytes = intdiv($bits, 8);
+            if (strncmp($packed, $net, $bytes) !== 0) {
+                continue;
+            }
+            $rest = $bits % 8;
+            if ($rest === 0) {
+                return true;
+            }
+            $mask = (0xFF << (8 - $rest)) & 0xFF;
+            if ((ord($packed[$bytes]) & $mask) === (ord($net[$bytes]) & $mask)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function isHttps(): bool

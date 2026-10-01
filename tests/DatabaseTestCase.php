@@ -26,9 +26,16 @@ abstract class DatabaseTestCase extends TestCase
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false],
             );
         } catch (Throwable $e) {
+            // Locally a missing DB just skips; in CI it must fail, or the
+            // payment tests could "pass" without ever running.
+            if (getenv('CI') !== false && getenv('CI') !== '') {
+                self::fail('Test database unreachable in CI: ' . $e->getMessage());
+            }
             $this->markTestSkipped('No test database: ' . $e->getMessage());
         }
 
+        // Same session time zone as the app (Database::connect).
+        $this->db->exec("SET time_zone = '" . (new \DateTime())->format('P') . "'");
         $this->db->exec('DROP TABLE IF EXISTS tip_ledger, messages, cv_downloads, rate_limits');
         $sql = (string) file_get_contents(dirname(__DIR__) . '/database/schema.sql');
         $sql = (string) preg_replace('/^\s*--.*$/m', '', $sql);

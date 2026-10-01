@@ -17,8 +17,9 @@ services:
       APP_BASE_PATH: ""
       DB_HOST: db
       DB_PORT: "3306"
+      # Traefik reaches the app from a Docker network; only its X-Forwarded-For is trusted.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
     volumes:
-      - ./data:/var/www/html/data
       - ./storage:/var/www/html/storage
       - ./public/assets/img/projects:/var/www/html/public/assets/img/projects
     depends_on:

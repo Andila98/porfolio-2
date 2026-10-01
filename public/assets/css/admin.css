@@ -31,3 +31,5 @@ form.inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
 .tag--failed, .tag--cancelled { color: var(--err); }
 .tag--duplicate_callback { color: var(--muted); }
 .pager { display: flex; gap: 16px; }
+.tag--env-production { color: var(--ok); }
+.tag--env-sandbox, .tag--env-fake { color: var(--version); }

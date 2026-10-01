@@ -64,6 +64,6 @@ final class Security
     /** Stable, non-reversible identifier for an IP or phone (privacy in logs). */
     public static function hash(string $value): string
     {
-        return hash_hmac('sha256', $value, (string) Env::get('APP_SECRET', 'dev-secret'));
+        return hash_hmac('sha256', $value, Env::secret());
     }
 }

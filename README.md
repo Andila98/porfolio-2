@@ -6,7 +6,7 @@ releases, CV downloads, a private admin page, and **Buy Me a Tea** via M-Pesa
 STK Push with an append-only payment ledger.
 
 - No framework and no frontend build step. Composer is only needed for PHPMailer (email) and PHPUnit (tests).
-- Content lives in JSON files under `data/` and is edited through `/admin`.
+- Content lives in JSON files in `storage/content/` (outside git) and is edited through `/admin`. `data/` holds the starting copy that is seeded in on first run, so deploys never overwrite your edits.
 - MySQL/MariaDB stores tips, messages, CV download counts and rate limits.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the pieces fit together.
@@ -26,6 +26,8 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the pieces fit togeth
    create a database named `portfolio` (collation `utf8mb4_unicode_ci`),
    select it, then **Import** `database/schema.sql`.
    Optionally import `database/seed-dev.sql` for sample rows.
+   (Imported an earlier version of the schema? Drop the four tables and import
+   again; `tip_ledger` gained an `environment` column before go-live.)
 4. **Configure.** Copy `.env.example` to `.env`. The XAMPP defaults (`root`, empty
    password) already match. Set `APP_URL=http://localhost/porfolio-2` and
    `APP_SECRET` to a long random string:
@@ -41,7 +43,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the pieces fit togeth
    **http://localhost/porfolio-2/**. Admin: **http://localhost/porfolio-2/admin**.
 
 > The repository-root `.htaccess` routes everything into `public/`, so `.env`,
-> `src/` and `data/` can never be downloaded. Make sure Apache's `mod_rewrite`
+> `src/`, `data/` and `storage/` can never be downloaded. Make sure Apache's `mod_rewrite`
 > is enabled (it is by default in XAMPP).
 
 **Without XAMPP:** point any PHP 8.2+ at MySQL/MariaDB and run
@@ -64,12 +66,22 @@ How payments are recorded:
 - A tip can settle only once. Repeat callbacks are stored as `DUPLICATE_CALLBACK` and never counted.
 - Phone numbers are stored as an HMAC hash plus the last 3 digits.
 - Callbacks go to `/api/mpesa/callback/<token>`. The token is derived from `APP_SECRET`, so keep that secret stable.
-- `bin/reconcile-tips.php` asks Daraja about tips still pending after 5 minutes (run it from cron).
+- `bin/reconcile-tips.php` asks Daraja about tips still pending after 5 minutes (run it from cron). Only final STK Query codes settle a tip; "still processing" answers are retried on the next run.
+- Every row records `MPESA_ENV` in its `environment` column. Totals and the dashboard count **production** rows only, so sandbox testing on the live site never inflates the numbers.
+- In production the app refuses to start with `MPESA_ENV=fake` or a weak `APP_SECRET`, so a misconfigured deploy fails its health check instead of taking fake payments.
+
+### About `APP_SECRET`
+
+Set it once and keep it. Changing it:
+
+- changes the callback URL, so callbacks for payments already in flight get `403` (reconcile settles those tips within minutes);
+- resets rate-limit counters;
+- means new phone hashes no longer match old ones, so the same number looks like a new payer.
 
 ## Admin (`/admin`)
 
 - Edit site settings, projects, achievements, skills, experience and CV versions.
-- Every save keeps the previous file in `data/history/`; **Restore** undoes a change.
+- Every save keeps the previous file in `storage/content/history/`; **Restore** undoes a change.
 - Upload CV PDFs (served at `/cv/<key>`) and project screenshots.
 - Tip ledger with monthly totals and CSV export, plus the contact-form inbox.
 
@@ -83,7 +95,7 @@ vendor/bin/phpunit
 Database tests use `DB_TEST_*` (defaults in `phpunit.xml`: `portfolio_test` on
 `127.0.0.1` as `root` with no password, which suits XAMPP). Create that empty
 database first. The tests rebuild the schema themselves. When no database is
-reachable, the DB tests are skipped.
+reachable, the DB tests are skipped locally but **fail** in CI (`CI=true`).
 
 ## Deploy (DigitalOcean Droplet beside Ilado FMS)
 
@@ -126,10 +138,10 @@ service) on every push and pull request.
 public/      web root: index.php (front controller), .htaccess, assets
 src/         PHP classes (App\ namespace) + routes.php + bootstrap.php
 templates/   PHP templates: layout, partials, pages, admin
-data/        JSON content (edited via /admin); history/ keeps old versions
+data/        seed content, copied into storage/content on first run
 database/    schema.sql, seed-dev.sql, changes/
 bin/         CLI scripts: hash-password, reconcile-tips, backup-db
-storage/     cache, logs, uploaded CV PDFs (not in git)
+storage/     content (live JSON + history), cache, logs, CV PDFs (not in git)
 docker/      Dockerfile, Apache/PHP/MySQL config
 tests/       PHPUnit tests
 ```

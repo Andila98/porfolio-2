@@ -19,9 +19,23 @@ final class TipService
     public const MAX_AMOUNT = 10000;
     public const PRESETS = [50, 100, 250];
 
+    /** A tip with no SENT row after this long never reached Safaricom. */
+    public const STUCK_REQUEST_SECONDS = 120;
+
+    /**
+     * STK Query result codes that are a final outcome. Anything else (for
+     * example 4999, "still under processing") leaves the tip pending, so a
+     * reconcile can never lock in FAILED before the real callback arrives.
+     * 0 paid · 1 insufficient balance · 1032 cancelled by user ·
+     * 1037 phone unreachable · 1019 transaction expired · 2001 wrong PIN
+     */
+    public const FINAL_QUERY_CODES = [0, 1, 1032, 1037, 1019, 2001];
+
     public function __construct(
         private readonly Ledger $ledger,
         private readonly DarajaClient $daraja,
+        /** MPESA_ENV, stamped on every ledger row: only "production" is real money. */
+        private readonly string $environment = 'fake',
     ) {
     }
 
@@ -54,6 +68,7 @@ final class TipService
             'phone_hash' => Security::hash($phone),
             'phone_last3' => PhoneNumber::last3($phone),
             'source' => 'app',
+            'environment' => $this->environment,
         ];
 
         // Written before the network call, so even a crash mid-request leaves a record.
@@ -85,17 +100,18 @@ final class TipService
      * and never counted twice.
      *
      * @param array<string, mixed> $payload
+     * @return 'settled'|'duplicate'|'unknown'
      */
-    public function handleCallback(array $payload, string $source = 'callback'): bool
+    public function handleCallback(array $payload, string $source = 'callback'): string
     {
         $cb = $payload['Body']['stkCallback'] ?? null;
         if (!is_array($cb) || empty($cb['CheckoutRequestID'])) {
-            return false;
+            return 'unknown';
         }
         $checkoutId = (string) $cb['CheckoutRequestID'];
         $previous = $this->ledger->findByCheckout($checkoutId);
         if ($previous === null) {
-            return false;
+            return 'unknown';
         }
 
         $code = (int) ($cb['ResultCode'] ?? -1);
@@ -117,6 +133,7 @@ final class TipService
             'result_code' => $code,
             'result_desc' => mb_substr((string) ($cb['ResultDesc'] ?? ''), 0, 255),
             'source' => $source,
+            'environment' => $previous['environment'],
             'raw_payload' => json_encode($payload, JSON_UNESCAPED_SLASHES),
         ];
 
@@ -124,10 +141,13 @@ final class TipService
             'event' => self::eventFor($code),
             'dedupe_key' => $checkoutId . ':final',
         ]);
-        if (!$settled && $source === 'callback') {
+        if ($settled) {
+            return 'settled';
+        }
+        if ($source === 'callback') {
             $this->ledger->append($row + ['event' => 'DUPLICATE_CALLBACK']);
         }
-        return true;
+        return 'duplicate';
     }
 
     /**
@@ -154,6 +174,10 @@ final class TipService
             }
         }
         $event = $current['event'];
+        // Crashed between REQUESTED and SENT: Safaricom never got the request.
+        if ($event === 'REQUESTED' && time() - (int) strtotime((string) $current['created_at']) > self::STUCK_REQUEST_SECONDS) {
+            $event = 'FAILED';
+        }
         [$status, $message] = match ($event) {
             'COMPLETED' => ['completed', 'Asante! Your tea has been received.'],
             'CANCELLED' => ['cancelled', 'The payment was cancelled on your phone.'],
@@ -163,7 +187,7 @@ final class TipService
         return [
             'status' => $status,
             'amount' => (int) $current['amount'],
-            'receipt' => $current['mpesa_receipt'] ?? null,
+            'receipt' => $event === 'COMPLETED' ? $this->ledger->receipt($tipId) : null,
             'message' => $message,
         ];
     }
@@ -174,16 +198,18 @@ final class TipService
         $settled = 0;
         foreach ($this->ledger->pendingOlderThan($olderThanSeconds) as $pending) {
             $result = $this->daraja->stkQuery((string) $pending['checkout_request_id']);
-            if ($result['result_code'] === null) {
-                continue;
+            if (!in_array($result['result_code'], self::FINAL_QUERY_CODES, true)) {
+                continue; // still processing or unknown: try again next run
             }
-            $this->handleCallback(['Body' => ['stkCallback' => [
+            $outcome = $this->handleCallback(['Body' => ['stkCallback' => [
                 'MerchantRequestID' => $pending['merchant_request_id'],
                 'CheckoutRequestID' => $pending['checkout_request_id'],
                 'ResultCode' => $result['result_code'],
                 'ResultDesc' => $result['result_desc'],
             ]]], 'reconcile');
-            $settled++;
+            if ($outcome === 'settled') {
+                $settled++;
+            }
         }
         return $settled;
     }
@@ -191,7 +217,7 @@ final class TipService
     /** Secret path segment that authenticates Daraja callbacks. */
     public static function callbackToken(): string
     {
-        return substr(hash_hmac('sha256', 'mpesa-callback', (string) Env::get('APP_SECRET', 'dev-secret')), 0, 40);
+        return substr(hash_hmac('sha256', 'mpesa-callback', Env::secret()), 0, 40);
     }
 
     public static function eventFor(int $resultCode): string

@@ -11,5 +11,8 @@ mkdir -p backups
 file="backups/portfolio-$(date +%Y%m%d-%H%M%S).sql.gz"
 docker compose exec -T db mysqldump --single-transaction --triggers --routines \
     -uroot -p"${DB_ROOT_PASS}" "${DB_NAME:-portfolio}" | gzip > "$file"
-find backups -name 'portfolio-*.sql.gz' -mtime +14 -delete
-echo "backup written: $file"
+# Admin-edited content and uploaded CVs live in storage/, not in git.
+files="backups/portfolio-files-$(date +%Y%m%d-%H%M%S).tar.gz"
+tar -czf "$files" storage/content storage/cv
+find backups -name 'portfolio-*' -mtime +14 -delete
+echo "backup written: $file $files"

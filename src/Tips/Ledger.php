@@ -18,7 +18,7 @@ final class Ledger
     private const COLUMNS = [
         'tip_id', 'event', 'amount', 'phone_hash', 'phone_last3', 'merchant_request_id',
         'checkout_request_id', 'mpesa_receipt', 'result_code', 'result_desc', 'source',
-        'dedupe_key', 'raw_payload',
+        'environment', 'dedupe_key', 'raw_payload',
     ];
 
     public function __construct(private readonly PDO $db)
@@ -69,14 +69,22 @@ final class Ledger
         return $stmt->fetch() ?: null;
     }
 
-    public function isSettled(string $tipId): bool
+    /**
+     * The M-Pesa receipt of a successful tip. Usually on the COMPLETED row, but
+     * when reconcile settled the tip first (STK Query returns no receipt), the
+     * real callback carrying it arrives later as a DUPLICATE_CALLBACK row.
+     */
+    public function receipt(string $tipId): ?string
     {
-        $stmt = $this->db->prepare(sprintf(
-            "SELECT COUNT(*) FROM tip_ledger WHERE tip_id = ? AND event IN ('%s')",
-            implode("','", self::FINAL_EVENTS),
-        ));
+        $stmt = $this->db->prepare(
+            "SELECT mpesa_receipt FROM tip_ledger
+             WHERE tip_id = ? AND result_code = 0 AND mpesa_receipt IS NOT NULL
+               AND event IN ('COMPLETED', 'DUPLICATE_CALLBACK')
+             ORDER BY id LIMIT 1"
+        );
         $stmt->execute([$tipId]);
-        return (int) $stmt->fetchColumn() > 0;
+        $receipt = $stmt->fetchColumn();
+        return $receipt === false ? null : (string) $receipt;
     }
 
     /** @return list<array<string, mixed>> Tips still waiting on Safaricom after $seconds. */
@@ -92,14 +100,27 @@ final class Ledger
         return $stmt->fetchAll();
     }
 
-    /** @return list<array<string, mixed>> One row per tip (its latest event), newest first. */
+    /**
+     * One row per tip, newest first: its latest event plus its settled status
+     * (final_event) and receipt, which a later DUPLICATE_CALLBACK must not hide.
+     *
+     * @return list<array<string, mixed>>
+     */
     public function tips(int $limit = 50, int $offset = 0): array
     {
         $stmt = $this->db->prepare(
-            'SELECT l.*, first.created_at AS started_at FROM tip_ledger l
+            "SELECT l.*, first.created_at AS started_at,
+                (SELECT f.event FROM tip_ledger f
+                  WHERE f.tip_id = l.tip_id AND f.event IN ('COMPLETED', 'CANCELLED', 'FAILED')
+                  ORDER BY f.id LIMIT 1) AS final_event,
+                (SELECT r.mpesa_receipt FROM tip_ledger r
+                  WHERE r.tip_id = l.tip_id AND r.result_code = 0 AND r.mpesa_receipt IS NOT NULL
+                    AND r.event IN ('COMPLETED', 'DUPLICATE_CALLBACK')
+                  ORDER BY r.id LIMIT 1) AS receipt
+             FROM tip_ledger l
              JOIN (SELECT tip_id, MAX(id) AS last_id, MIN(id) AS first_id FROM tip_ledger GROUP BY tip_id) t ON t.last_id = l.id
              JOIN tip_ledger first ON first.id = t.first_id
-             ORDER BY l.id DESC LIMIT ? OFFSET ?'
+             ORDER BY l.id DESC LIMIT ? OFFSET ?"
         );
         $stmt->bindValue(1, $limit, PDO::PARAM_INT);
         $stmt->bindValue(2, $offset, PDO::PARAM_INT);
@@ -121,13 +142,20 @@ final class Ledger
         return $this->db->query('SELECT * FROM tip_ledger ORDER BY id')->fetchAll();
     }
 
-    /** @return list<array{month: string, tips: int, total: int}> Completed tips per month. */
-    public function monthlyTotals(): array
+    /**
+     * Completed tips per month. Only the production environment counts:
+     * sandbox and fake rows are test money.
+     *
+     * @return list<array{month: string, tips: int, total: int}>
+     */
+    public function monthlyTotals(string $environment = 'production'): array
     {
-        return $this->db->query(
+        $stmt = $this->db->prepare(
             "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS tips, SUM(amount) AS total
-             FROM tip_ledger WHERE event = 'COMPLETED'
+             FROM tip_ledger WHERE event = 'COMPLETED' AND environment = ?
              GROUP BY month ORDER BY month DESC"
-        )->fetchAll();
+        );
+        $stmt->execute([$environment]);
+        return $stmt->fetchAll();
     }
 }

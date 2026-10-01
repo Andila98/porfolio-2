@@ -46,7 +46,13 @@ final class App
 
     public function content(): ContentRepository
     {
-        return $this->content ??= new ContentRepository($this->root . '/data');
+        if ($this->content === null) {
+            // Editable content lives outside git (storage/content); /data is the seed.
+            $dir = Env::get('CONTENT_DIR', $this->root . '/storage/content');
+            $this->content = new ContentRepository($dir);
+            $this->content->seedFrom($this->root . '/data');
+        }
+        return $this->content;
     }
 
     public function view(): View
@@ -74,7 +80,7 @@ final class App
 
     public function tips(): TipService
     {
-        return $this->tips ??= new TipService(new Ledger($this->db()), $this->daraja());
+        return $this->tips ??= new TipService(new Ledger($this->db()), $this->daraja(), (string) Env::get('MPESA_ENV', 'fake'));
     }
 
     public function daraja(): DarajaClient

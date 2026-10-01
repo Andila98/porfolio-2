@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS tip_ledger (
     result_code          INT             NULL,
     result_desc          VARCHAR(255)    NULL,
     source               VARCHAR(16)     NOT NULL COMMENT 'app | callback | reconcile',
+    environment          VARCHAR(12)     NOT NULL COMMENT 'production | sandbox | fake: only production is real money',
     dedupe_key           VARCHAR(96)     NULL COMMENT 'Set on final events so a tip can only settle once',
     raw_payload          TEXT            NULL COMMENT 'Raw JSON from Daraja',
     created_at           DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS tip_ledger (
     UNIQUE KEY uq_tip_ledger_dedupe (dedupe_key),
     KEY idx_tip_ledger_tip (tip_id, id),
     KEY idx_tip_ledger_checkout (checkout_request_id),
-    KEY idx_tip_ledger_created (created_at)
+    KEY idx_tip_ledger_created (created_at),
+    KEY idx_tip_ledger_env_event (environment, event)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TRIGGER IF EXISTS tip_ledger_no_update;

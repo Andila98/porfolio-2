@@ -25,7 +25,7 @@ final class ContentRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir . '/{,history/}*', GLOB_BRACE) ?: [] as $file) {
+        foreach (array_merge(glob($this->dir . '/*') ?: [], glob($this->dir . '/history/*') ?: []) as $file) {
             is_file($file) && unlink($file);
         }
         @rmdir($this->dir . '/history');
@@ -68,6 +68,41 @@ final class ContentRepositoryTest extends TestCase
         $history = $repo->history('achievements');
         $repo->restore('achievements', $history[0]);
         self::assertSame(['a', 'b'], array_column((new ContentRepository($this->dir))->all('achievements', true), 'id'));
+    }
+
+    public function testSeedCopiesMissingFilesAndNeverOverwrites(): void
+    {
+        $seed = $this->dir . '/seed';
+        mkdir($seed);
+        file_put_contents($seed . '/achievements.json', '[{"id":"seeded"}]');
+        file_put_contents($seed . '/skills.json', '[{"id":"backend","label":"Backend"}]');
+
+        $live = $this->dir . '/live';
+        $repo = new ContentRepository($live);
+        $repo->seedFrom($seed);
+        self::assertSame('backend', $repo->find('skills', 'backend')['id'] ?? null);
+
+        // An admin edit must survive a later seed run (e.g. the next deploy).
+        $repo->upsert('skills', ['id' => 'backend', 'label' => 'Edited'], 'backend');
+        (new ContentRepository($live))->seedFrom($seed);
+        self::assertSame('Edited', (new ContentRepository($live))->find('skills', 'backend')['label']);
+
+        array_map('unlink', array_merge(glob($seed . '/*') ?: [], glob($live . '/history/*') ?: [], glob($live . '/*.*') ?: []));
+        @rmdir($seed);
+        @rmdir($live . '/history');
+        @rmdir($live);
+    }
+
+    public function testStaleInstanceDoesNotOverwriteAnotherWriter(): void
+    {
+        $tabA = new ContentRepository($this->dir);
+        $tabA->all('achievements', true); // tab A loaded the page earlier
+        (new ContentRepository($this->dir))->upsert('achievements', ['id' => 'from-b', 'title' => 'B'], null);
+
+        $tabA->upsert('achievements', ['id' => 'from-a', 'title' => 'A'], null);
+        $ids = array_column((new ContentRepository($this->dir))->all('achievements', true), 'id');
+        self::assertContains('from-a', $ids);
+        self::assertContains('from-b', $ids);
     }
 
     public function testSchemaValidation(): void
