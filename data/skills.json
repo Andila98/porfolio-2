@@ -1,0 +1,8 @@
+[
+    {"id": "backend", "label": "Backend", "items": ["Java / Spring Boot", "Python / Django REST Framework", "PHP", "REST API design", "JWT & RBAC"], "primary": true, "hidden": false},
+    {"id": "data", "label": "Data & messaging", "items": ["PostgreSQL", "MySQL", "Redis", "Kafka", "Flyway"], "primary": true, "hidden": false},
+    {"id": "frontend", "label": "Frontend", "items": ["React", "Redux Toolkit", "Vue.js", "Next.js", "Tailwind"], "primary": false, "hidden": false},
+    {"id": "mobile", "label": "Mobile", "items": ["Android (Java)", "Firebase"], "primary": false, "hidden": false},
+    {"id": "devops", "label": "DevOps", "items": ["Docker", "Traefik", "GitHub Actions", "Linux / DigitalOcean"], "primary": false, "hidden": false},
+    {"id": "payments", "label": "Payments", "items": ["M-Pesa Daraja (STK Push)", "Payment gateway idempotency", "Double-entry ledgers"], "primary": false, "hidden": false}
+]

@@ -1,0 +1,35 @@
+/* Admin-only additions on top of main.css. */
+.admin__main { padding-top: 24px; padding-bottom: 64px; }
+.admin__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.admin__head h1 { margin: 0; font-size: 1.6rem; }
+.admin-login { margin-top: 10vh; }
+.admin-form { max-width: 760px; }
+.admin-form__actions { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(transparent, var(--bg) 40%); }
+.check { display: flex; gap: 10px; align-items: center; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 16px; }
+.table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.table th, .table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table th { font: 600 .75rem var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.table tr:last-child td { border-bottom: 0; }
+.node .table th, .node .table td { padding: 6px 8px; }
+.nowrap { white-space: nowrap; }
+form.inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.icon-btn--sm { width: 28px; height: 28px; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.btn--danger { color: var(--err); }
+.btn--danger:hover { border-color: var(--err); }
+.plain { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.stat { font: 700 2.2rem var(--mono); margin: 0 0 8px; }
+.stat span { font-size: .9rem; font-weight: 400; color: var(--muted); }
+.history { margin-top: 16px; }
+.history summary { cursor: pointer; font-family: var(--mono); color: var(--muted); }
+.messages { display: grid; gap: 16px; }
+.message--unread { border-color: var(--accent); }
+.tag--requested, .tag--sent { color: var(--info); }
+.tag--completed { color: var(--ok); }
+.tag--failed, .tag--cancelled { color: var(--err); }
+.tag--duplicate_callback { color: var(--muted); }
+.pager { display: flex; gap: 16px; }
+.tag--env-production { color: var(--ok); }
+.tag--env-sandbox, .tag--env-fake { color: var(--version); }

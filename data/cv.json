@@ -1,0 +1,34 @@
+[
+    {
+        "file": "cv-master.pdf",
+        "updated": "2026-09-28",
+        "key": "master",
+        "label": "Master CV",
+        "primary": true,
+        "hidden": false
+    },
+    {
+        "key": "backend",
+        "label": "Backend Engineer",
+        "file": "cv-backend.pdf",
+        "updated": "",
+        "primary": false,
+        "hidden": false
+    },
+    {
+        "key": "mobile",
+        "label": "Mobile Engineer",
+        "file": "cv-mobile.pdf",
+        "updated": "",
+        "primary": false,
+        "hidden": false
+    },
+    {
+        "key": "fullstack",
+        "label": "Full-stack Engineer",
+        "file": "cv-fullstack.pdf",
+        "updated": "",
+        "primary": false,
+        "hidden": false
+    }
+]

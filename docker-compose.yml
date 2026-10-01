@@ -1,0 +1,72 @@
+# Production stack for the DigitalOcean Droplet. It runs beside Ilado FMS and
+# reuses that stack's Traefik (routing + Let's Encrypt). No ports are published.
+#
+#   cp .env.example .env   # fill in production values
+#   docker compose up -d --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_BASE_PATH: ""
+      DB_HOST: db
+      DB_PORT: "3306"
+      # Traefik reaches the app from a Docker network; only its X-Forwarded-For is trusted.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./public/assets/img/projects:/var/www/html/public/assets/img/projects
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 128m
+    networks:
+      - internal
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.portfolio.rule=Host(`${SITE_DOMAIN}`) || Host(`www.${SITE_DOMAIN}`)
+      - traefik.http.routers.portfolio.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.portfolio.tls=true
+      - traefik.http.routers.portfolio.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.services.portfolio.loadbalancer.server.port=80
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:?set DB_ROOT_PASS in .env}
+      MYSQL_DATABASE: ${DB_NAME:-portfolio}
+      # Read by docker/mysql/02-grants.sh to create the least-privilege app user.
+      APP_DB_USER: ${DB_USER:?set DB_USER in .env}
+      APP_DB_PASS: ${DB_PASS:?set DB_PASS in .env}
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./docker/mysql/02-grants.sh:/docker-entrypoint-initdb.d/02-grants.sh:ro
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/portfolio.cnf:ro
+    mem_limit: 256m
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  internal:
+    internal: true
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
+
+volumes:
+  db-data:

@@ -1,0 +1,39 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to the Droplet over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.DO_APP_DIR }}"
+            git fetch --prune origin main
+            git reset --hard origin/main
+            docker compose up -d --build
+            # Fail the workflow if the new container never becomes healthy.
+            for i in $(seq 1 30); do
+              if docker compose exec -T app curl -fsS http://localhost/healthz; then
+                echo; echo "healthy"; break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "app did not become healthy"; docker compose logs --tail=50 app; exit 1
+              fi
+              sleep 2
+            done
+            docker image prune -f

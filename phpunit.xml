@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- DB tests run against this database and are skipped when it is unreachable. -->
+        <env name="DB_TEST_HOST" value="127.0.0.1" force="false"/>
+        <env name="DB_TEST_PORT" value="3306" force="false"/>
+        <env name="DB_TEST_NAME" value="portfolio_test" force="false"/>
+        <env name="DB_TEST_USER" value="root" force="false"/>
+        <env name="DB_TEST_PASS" value="" force="false"/>
+    </php>
+</phpunit>
