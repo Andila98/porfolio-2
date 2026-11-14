@@ -1,5 +1,6 @@
-# Production stack for the DigitalOcean Droplet. It runs beside Ilado FMS and
-# reuses that stack's Traefik (routing + Let's Encrypt). No ports are published.
+# Production stack for the DigitalOcean Droplet. Runs beside Ilado FMS and
+# reuses that stack's Caddy (reverse proxy + Let's Encrypt) via fms-net,
+# instead of the Traefik setup this repo originally shipped with.
 #
 #   cp .env.example .env   # fill in production values
 #   docker compose up -d --build
@@ -17,7 +18,12 @@ services:
       APP_BASE_PATH: ""
       DB_HOST: db
       DB_PORT: "3306"
-      # Traefik reaches the app from a Docker network; only its X-Forwarded-For is trusted.
+      # The real bcrypt hash contains $-signs that env_file / ${VAR} substitution
+      # corrupts (Compose re-interpolates $<letter...> sequences inside substituted
+      # values). $$ here is the one reliable escape; set the real value on the
+      # droplet by editing this line directly, not via .env.
+      ADMIN_PASSWORD_HASH: $$2y$$10$$C/Yzz7FHf5GhxOclvhExI.E.xyfSzMhuC3UnB2cUOTuT1z8ex56Oi
+      # Caddy reaches the app from the fms-net Docker network; trust its forwarded headers.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
     volumes:
       - ./storage:/var/www/html/storage
@@ -28,15 +34,7 @@ services:
     mem_limit: 128m
     networks:
       - internal
-      - traefik
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
-      - traefik.http.routers.portfolio.rule=Host(`${SITE_DOMAIN}`) || Host(`www.${SITE_DOMAIN}`)
-      - traefik.http.routers.portfolio.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.portfolio.tls=true
-      - traefik.http.routers.portfolio.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.services.portfolio.loadbalancer.server.port=80
+      - fms-net
 
   db:
     image: mysql:8.4
@@ -64,9 +62,8 @@ services:
 networks:
   internal:
     internal: true
-  traefik:
+  fms-net:
     external: true
-    name: ${TRAEFIK_NETWORK:-traefik}
 
 volumes:
   db-data:
